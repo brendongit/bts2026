@@ -38,5 +38,9 @@ jobs:
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git add state.json
             git commit -m "chore: atualiza state.json [skip ci]"
-            git push
+            for i in 1 2 3 4 5; do
+              git pull --rebase origin main && git push && break
+              echo "push rejeitado (tentativa $i), tentando de novo..."
+              sleep $((RANDOM % 10 + 1))
+            done
           fi
