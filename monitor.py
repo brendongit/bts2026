@@ -47,6 +47,12 @@ def salvar_state(state):
         json.dump(state, f, indent=2, ensure_ascii=False)
 
 
+def registrar_historico(resultado, agora, preco):
+    historico = resultado.setdefault("historico", [])
+    if not historico or historico[-1]["preco"] != preco:
+        historico.append({"em": agora.isoformat(), "preco": preco})
+
+
 def enviar_telegram(msg, dry_run):
     if dry_run:
         print("[DRY-RUN] enviaria ao Telegram:\n" + msg)
@@ -99,6 +105,7 @@ def processar_dia(label, info, state, dry_run):
     if oferta is None:
         resultado["ultimo_preco"] = None
         resultado["ultimo_listing_id"] = None
+        registrar_historico(resultado, agora, None)
         print(f"[{agora:%Y-%m-%d %H:%M}] {label} (Arquibancada/Inteira): sem anúncio disponível")
         return
 
@@ -106,6 +113,7 @@ def processar_dia(label, info, state, dry_run):
     listing_id = oferta["listing_id"]
     resultado["ultimo_preco"] = preco
     resultado["ultimo_listing_id"] = listing_id
+    registrar_historico(resultado, agora, preco)
 
     dentro_do_alvo = preco <= PRECO_ALVO
     situacao = "DENTRO DO ALVO" if dentro_do_alvo else "acima do alvo"

@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BTS Arirang - Monitor de preço</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      color: #222;
+    }
+    h1 { font-size: 1.4rem; }
+    .cards { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+    .card {
+      flex: 1;
+      min-width: 220px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    .card h2 { margin: 0 0 0.5rem; font-size: 1rem; color: #666; }
+    .preco { font-size: 1.8rem; font-weight: 700; }
+    .alvo { color: #1a7f37; }
+    .acima { color: #222; }
+    .indisponivel { color: #999; font-size: 1.2rem; }
+    .meta { color: #888; font-size: 0.85rem; margin-top: 0.4rem; }
+    #status { color: #888; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <h1>BTS - 2026 World Tour Arirang</h1>
+  <p>Setor Arquibancada · Categoria Inteira · Alvo: <span id="alvo-label">R$ 2.800</span></p>
+
+  <div class="cards" id="cards"></div>
+
+  <canvas id="grafico" height="110"></canvas>
+  <p id="status">carregando...</p>
+
+  <script>
+    const PRECO_ALVO = 2800;
+    const DIAS = { dia30: "30/10", dia31: "31/10" };
+    const CORES = { dia30: "#1a7f37", dia31: "#9a3412" };
+
+    function formatarPreco(v) {
+      if (v === null || v === undefined) return "sem anúncio";
+      return "R$ " + v.toFixed(2).replace(".", ",");
+    }
+
+    function renderCards(state) {
+      const cards = document.getElementById("cards");
+      cards.innerHTML = "";
+      for (const [label, nome] of Object.entries(DIAS)) {
+        const dia = state[label] || {};
+        const preco = dia.ultimo_preco;
+        const dentroDoAlvo = preco !== null && preco !== undefined && preco <= PRECO_ALVO;
+        const classe = preco == null ? "indisponivel" : (dentroDoAlvo ? "preco alvo" : "preco acima");
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `
+          <h2>${nome}</h2>
+          <div class="${classe}">${formatarPreco(preco)}</div>
+          <div class="meta">última consulta: ${dia.ultima_consulta ? new Date(dia.ultima_consulta).toLocaleString("pt-BR") : "-"}</div>
+        `;
+        cards.appendChild(div);
+      }
+    }
+
+    function renderGrafico(state) {
+      const datasets = [];
+      const labelsSet = new Set();
+
+      for (const label of Object.keys(DIAS)) {
+        const historico = (state[label] || {}).historico || [];
+        historico.forEach((p) => labelsSet.add(p.em));
+      }
+      const labels = Array.from(labelsSet).sort();
+
+      for (const [label, nome] of Object.entries(DIAS)) {
+        const historico = (state[label] || {}).historico || [];
+        const porData = {};
+        historico.forEach((p) => (porData[p.em] = p.preco));
+
+        let ultimoValor = null;
+        const dados = labels.map((em) => {
+          if (em in porData) ultimoValor = porData[em];
+          return ultimoValor;
+        });
+
+        datasets.push({
+          label: nome,
+          data: dados,
+          borderColor: CORES[label],
+          backgroundColor: CORES[label],
+          stepped: "before",
+          spanGaps: true,
+          tension: 0,
+        });
+      }
+
+      new Chart(document.getElementById("grafico"), {
+        type: "line",
+        data: {
+          labels: labels.map((l) => new Date(l).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })),
+          datasets,
+        },
+        options: {
+          responsive: true,
+          interaction: { mode: "nearest", intersect: false },
+          scales: {
+            y: {
+              title: { display: true, text: "Preço (R$)" },
+              suggestedMin: 0,
+            },
+            x: {
+              ticks: { maxTicksLimit: 10 },
+            },
+          },
+          plugins: {
+            annotation: undefined,
+          },
+        },
+      });
+    }
+
+    async function carregar() {
+      try {
+        const resp = await fetch("state.json?_=" + Date.now());
+        if (!resp.ok) throw new Error("state.json ainda não existe (o workflow ainda não rodou nenhuma vez?)");
+        const state = await resp.json();
+        renderCards(state);
+        renderGrafico(state);
+        document.getElementById("status").textContent =
+          "atualizado em " + new Date().toLocaleTimeString("pt-BR");
+      } catch (e) {
+        document.getElementById("status").textContent = "erro ao carregar: " + e.message;
+      }
+    }
+
+    carregar();
+    setInterval(carregar, 60000);
+  </script>
+</body>
+</html>
