@@ -49,8 +49,7 @@ def salvar_state(state):
 
 def registrar_historico(resultado, agora, preco):
     historico = resultado.setdefault("historico", [])
-    if not historico or historico[-1]["preco"] != preco:
-        historico.append({"em": agora.isoformat(), "preco": preco})
+    historico.append({"em": agora.isoformat(), "preco": preco})
 
 
 def enviar_telegram(msg, dry_run):

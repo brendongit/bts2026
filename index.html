@@ -6,50 +6,29 @@
 <title>BTS Arirang - Monitor de preço</title>
 <style>
   :root {
-    --page-bg-1: #efe9fb;
-    --page-bg-2: #e3d9f7;
-    --surface: #fcfcfb;
-    --text-primary: #0b0b0b;
-    --text-secondary: #52514e;
+    color-scheme: dark;
+    --page-bg-1: #0d0d0d;
+    --page-bg-2: #19131f;
+    --surface: #1a1a19;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
     --muted: #898781;
-    --grid: #e1e0d9;
-    --baseline: #c3c2b7;
-    --border: rgba(11, 11, 11, 0.1);
-    --delta-good: #006300;
-    --tooltip-bg: #1a1a19;
+    --grid: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255, 255, 255, 0.1);
+    --delta-good: #0ca30c;
+    --tooltip-bg: #0b0b0b;
     --tooltip-text: #ffffff;
-    --pill-good-bg: rgba(12, 163, 12, 0.14);
-    --pill-good-text: #006300;
-    --pill-neutral-bg: rgba(11, 11, 11, 0.06);
+    --pill-good-bg: rgba(12, 163, 12, 0.2);
+    --pill-good-text: #0ca30c;
+    --pill-neutral-bg: rgba(255, 255, 255, 0.08);
     --pill-neutral-text: var(--text-secondary);
-    --series-dia30: #1baf7a;
-    --series-dia30-wash: rgba(27, 175, 122, 0.1);
-    --series-dia31: #2a78d6;
-    --series-dia31-wash: rgba(42, 120, 214, 0.1);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --page-bg-1: #0d0d0d;
-      --page-bg-2: #151018;
-      --surface: #1a1a19;
-      --text-primary: #ffffff;
-      --text-secondary: #c3c2b7;
-      --muted: #898781;
-      --grid: #2c2c2a;
-      --baseline: #383835;
-      --border: rgba(255, 255, 255, 0.1);
-      --delta-good: #0ca30c;
-      --tooltip-bg: #0b0b0b;
-      --tooltip-text: #ffffff;
-      --pill-good-bg: rgba(12, 163, 12, 0.2);
-      --pill-good-text: #0ca30c;
-      --pill-neutral-bg: rgba(255, 255, 255, 0.08);
-      --pill-neutral-text: var(--text-secondary);
-      --series-dia30: #199e70;
-      --series-dia30-wash: rgba(25, 158, 112, 0.16);
-      --series-dia31: #3987e5;
-      --series-dia31-wash: rgba(57, 135, 229, 0.16);
-    }
+    --series-dia30: #199e70;
+    --series-dia30-wash: rgba(25, 158, 112, 0.16);
+    --series-dia31: #3987e5;
+    --series-dia31-wash: rgba(57, 135, 229, 0.16);
+    --destaque-bg: #0b0b0b;
+    --destaque-border: rgba(12, 163, 12, 0.5);
   }
 
   * { box-sizing: border-box; }
@@ -61,12 +40,11 @@
     min-height: 100vh;
     padding: 2.5rem 1.25rem;
   }
-  main { max-width: 1040px; margin: 0 auto; }
+  main { max-width: 900px; margin: 0 auto; }
   h1 { font-size: 1.1rem; font-weight: 600; margin: 0 0 0.25rem; }
   .sub { color: var(--text-secondary); margin: 0 0 1.75rem; font-size: 0.9rem; }
 
-  .cards { display: grid; grid-template-columns: 1fr; gap: 1.25rem; }
-  @media (min-width: 760px) { .cards { grid-template-columns: 1fr 1fr; } }
+  .cards { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
 
   .card {
     background: var(--surface);
@@ -101,7 +79,7 @@
   .delta.subiu .valor { color: var(--text-secondary); }
   .delta .contexto { color: var(--muted); }
 
-  svg.chart { width: 100%; height: 190px; display: block; overflow: visible; }
+  svg.chart { width: 100%; height: 320px; display: block; overflow: visible; }
   .gridline { stroke: var(--grid); stroke-width: 1; }
   .axis-label { fill: var(--muted); font-size: 10px; font-family: inherit; }
   .area-path { fill-opacity: 1; }
@@ -218,13 +196,18 @@
     const historico = (dia.historico || []).filter((p) => p.preco !== null);
     const delta = document.createElement("div");
     delta.className = "delta";
-    if (historico.length >= 2) {
-      const atual = historico[historico.length - 1].preco;
-      const anterior = historico[historico.length - 2].preco;
-      const diff = atual - anterior;
-      const pct = (diff / anterior) * 100;
-      delta.classList.add(diff < 0 ? "baixou" : diff > 0 ? "subiu" : "");
-      const seta = diff < 0 ? "↓" : diff > 0 ? "↑" : "–";
+    const atual = historico.length ? historico[historico.length - 1].preco : null;
+    // acha o ponto anterior mais recente com preço diferente do atual (pula repetições)
+    let anteriorDiferente = null;
+    for (let i = historico.length - 2; i >= 0; i--) {
+      if (historico[i].preco !== atual) { anteriorDiferente = historico[i].preco; break; }
+    }
+    if (anteriorDiferente !== null) {
+      const diff = atual - anteriorDiferente;
+      const pct = (diff / anteriorDiferente) * 100;
+      if (diff < 0) delta.classList.add("baixou");
+      else if (diff > 0) delta.classList.add("subiu");
+      const seta = diff < 0 ? "↓" : "↑";
       const valorSpan = document.createElement("span");
       valorSpan.className = "valor";
       valorSpan.textContent = `${seta} ${formatarPreco(Math.abs(diff))} (${Math.abs(pct).toFixed(1)}%)`;
@@ -234,7 +217,7 @@
       delta.appendChild(valorSpan);
       delta.appendChild(contextoSpan);
     } else {
-      delta.innerHTML = '<span class="contexto">ainda sem histórico suficiente pra comparar</span>';
+      delta.innerHTML = '<span class="contexto">ainda sem mudança de preço registrada</span>';
     }
     card.appendChild(delta);
 
@@ -290,7 +273,7 @@
   }
 
   function renderChart(container, historico, info) {
-    const W = 600, H = 190, padL = 56, padR = 10, padT = 10, padB = 24;
+    const W = 900, H = 320, padL = 64, padR = 10, padT = 14, padB = 28;
     const plotW = W - padL - padR, plotH = H - padT - padB;
 
     const valores = historico.map((p) => p.preco);
@@ -303,6 +286,10 @@
 
     const seriesColor = getComputedStyle(document.documentElement).getPropertyValue(info.corVar).trim();
     const washColor = getComputedStyle(document.documentElement).getPropertyValue(info.washVar).trim();
+    const surfaceColor = getComputedStyle(document.documentElement).getPropertyValue("--surface").trim();
+    const deltaGoodColor = getComputedStyle(document.documentElement).getPropertyValue("--delta-good").trim();
+    const tooltipBgColor = getComputedStyle(document.documentElement).getPropertyValue("--tooltip-bg").trim();
+    const tooltipTextColor = getComputedStyle(document.documentElement).getPropertyValue("--tooltip-text").trim();
 
     const svgns = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(svgns, "svg");
@@ -362,15 +349,71 @@
     line.setAttribute("class", "line-path");
     svg.appendChild(line);
 
-    // x labels: primeiro, meio, último
-    const idxLabels = historico.length === 1 ? [0] : [0, Math.floor((historico.length - 1) / 2), historico.length - 1];
+    // marcador fixo no menor preço já visto (não depende de hover)
+    if (historico.length >= 2) {
+      const minIdx = historico.reduce((best, p, i) => (p.preco < historico[best].preco ? i : best), 0);
+      const minPreco = historico[minIdx].preco;
+      const mx = x(minIdx), my = y(minPreco);
+
+      const destaqueRing = document.createElementNS(svgns, "circle");
+      destaqueRing.setAttribute("cx", mx);
+      destaqueRing.setAttribute("cy", my);
+      destaqueRing.setAttribute("r", 7);
+      destaqueRing.setAttribute("fill", surfaceColor);
+      svg.appendChild(destaqueRing);
+
+      const destaqueDot = document.createElementNS(svgns, "circle");
+      destaqueDot.setAttribute("cx", mx);
+      destaqueDot.setAttribute("cy", my);
+      destaqueDot.setAttribute("r", 5);
+      destaqueDot.setAttribute("fill", seriesColor);
+      destaqueDot.setAttribute("stroke", deltaGoodColor);
+      destaqueDot.setAttribute("stroke-width", "2");
+      svg.appendChild(destaqueDot);
+
+      const labelText = "menor: " + formatarPreco(minPreco);
+      const estimW = labelText.length * 5.6 + 14;
+      const estimH = 18;
+      let labelY = my - 10 - estimH;
+      if (labelY < padT) labelY = my + 10;
+      labelY = Math.min(labelY, padT + plotH - estimH);
+      let labelX = mx - estimW / 2;
+      labelX = Math.max(padL, Math.min(labelX, W - padR - estimW));
+
+      const bg = document.createElementNS(svgns, "rect");
+      bg.setAttribute("x", labelX);
+      bg.setAttribute("y", labelY);
+      bg.setAttribute("width", estimW);
+      bg.setAttribute("height", estimH);
+      bg.setAttribute("rx", 5);
+      bg.setAttribute("fill", tooltipBgColor);
+      bg.setAttribute("stroke", deltaGoodColor);
+      bg.setAttribute("stroke-width", "1");
+      svg.appendChild(bg);
+
+      const txt = document.createElementNS(svgns, "text");
+      txt.setAttribute("x", labelX + estimW / 2);
+      txt.setAttribute("y", labelY + estimH / 2 + 3.5);
+      txt.setAttribute("text-anchor", "middle");
+      txt.setAttribute("font-size", "10");
+      txt.setAttribute("font-weight", "700");
+      txt.setAttribute("fill", tooltipTextColor);
+      txt.textContent = labelText;
+      svg.appendChild(txt);
+    }
+
+    // x labels: até 6 pontos espaçados (primeiro e último sempre entram)
+    const nLabels = Math.min(6, historico.length);
+    const idxLabels = historico.length === 1
+      ? [0]
+      : Array.from({ length: nLabels }, (_, k) => Math.round((k / (nLabels - 1)) * (historico.length - 1)));
     [...new Set(idxLabels)].forEach((i) => {
       const label = document.createElementNS(svgns, "text");
       label.setAttribute("x", x(i));
-      label.setAttribute("y", H - 4);
+      label.setAttribute("y", H - 8);
       label.setAttribute("text-anchor", i === 0 ? "start" : i === historico.length - 1 ? "end" : "middle");
       label.setAttribute("class", "axis-label");
-      label.textContent = formatarData(historico[i].em, false);
+      label.textContent = formatarData(historico[i].em, true);
       svg.appendChild(label);
     });
 
