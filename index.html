@@ -42,7 +42,28 @@
   }
   main { max-width: 900px; margin: 0 auto; }
   h1 { font-size: 1.1rem; font-weight: 600; margin: 0 0 0.25rem; }
-  .sub { color: var(--text-secondary); margin: 0 0 1.75rem; font-size: 0.9rem; }
+  .sub { color: var(--text-secondary); margin: 0; font-size: 0.9rem; }
+
+  .header-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.75rem;
+  }
+  .btn-widget {
+    flex: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.55rem 1rem;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .btn-widget:hover { background: rgba(255, 255, 255, 0.08); }
 
   .cards { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
 
@@ -131,8 +152,13 @@
 </head>
 <body>
 <main>
-  <h1>BTS - 2026 World Tour Arirang</h1>
-  <p class="sub">Setor Arquibancada · Categoria Inteira · Alvo: R$ 2.800</p>
+  <div class="header-row">
+    <div>
+      <h1>BTS - 2026 World Tour Arirang</h1>
+      <p class="sub">Setor Arquibancada · Categoria Inteira · Alvo: R$ 2.800</p>
+    </div>
+    <button id="btn-widget" class="btn-widget">Habilitar widget</button>
+  </div>
 
   <div class="cards" id="cards"></div>
 
@@ -140,6 +166,17 @@
 </main>
 
 <script>
+  document.getElementById("btn-widget").addEventListener("click", () => {
+    const w = 280, h = 250;
+    const left = Math.round(screen.width - w - 20);
+    const top = Math.round(screen.height - h - 60);
+    window.open(
+      "/widget/widget.html",
+      "bts-widget",
+      `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=no,status=no,toolbar=no,menubar=no,location=no`
+    );
+  });
+
   const PRECO_ALVO = 2800;
   const DIAS = {
     dia30: { nome: "dia 30/10", corVar: "--series-dia30", washVar: "--series-dia30-wash" },
