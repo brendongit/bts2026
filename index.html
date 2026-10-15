@@ -1,147 +1,477 @@
 <!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>BTS Arirang - Monitor de preço</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      max-width: 900px;
-      margin: 2rem auto;
-      padding: 0 1rem;
-      color: #222;
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BTS Arirang - Monitor de preço</title>
+<style>
+  :root {
+    --page-bg-1: #efe9fb;
+    --page-bg-2: #e3d9f7;
+    --surface: #fcfcfb;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --baseline: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.1);
+    --delta-good: #006300;
+    --tooltip-bg: #1a1a19;
+    --tooltip-text: #ffffff;
+    --pill-good-bg: rgba(12, 163, 12, 0.14);
+    --pill-good-text: #006300;
+    --pill-neutral-bg: rgba(11, 11, 11, 0.06);
+    --pill-neutral-text: var(--text-secondary);
+    --series-dia30: #1baf7a;
+    --series-dia30-wash: rgba(27, 175, 122, 0.1);
+    --series-dia31: #2a78d6;
+    --series-dia31-wash: rgba(42, 120, 214, 0.1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page-bg-1: #0d0d0d;
+      --page-bg-2: #151018;
+      --surface: #1a1a19;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --muted: #898781;
+      --grid: #2c2c2a;
+      --baseline: #383835;
+      --border: rgba(255, 255, 255, 0.1);
+      --delta-good: #0ca30c;
+      --tooltip-bg: #0b0b0b;
+      --tooltip-text: #ffffff;
+      --pill-good-bg: rgba(12, 163, 12, 0.2);
+      --pill-good-text: #0ca30c;
+      --pill-neutral-bg: rgba(255, 255, 255, 0.08);
+      --pill-neutral-text: var(--text-secondary);
+      --series-dia30: #199e70;
+      --series-dia30-wash: rgba(25, 158, 112, 0.16);
+      --series-dia31: #3987e5;
+      --series-dia31-wash: rgba(57, 135, 229, 0.16);
     }
-    h1 { font-size: 1.4rem; }
-    .cards { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
-    .card {
-      flex: 1;
-      min-width: 220px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 1rem;
-    }
-    .card h2 { margin: 0 0 0.5rem; font-size: 1rem; color: #666; }
-    .preco { font-size: 1.8rem; font-weight: 700; }
-    .alvo { color: #1a7f37; }
-    .acima { color: #222; }
-    .indisponivel { color: #999; font-size: 1.2rem; }
-    .meta { color: #888; font-size: 0.85rem; margin-top: 0.4rem; }
-    #status { color: #888; font-size: 0.85rem; }
-  </style>
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--text-primary);
+    background: radial-gradient(circle at 15% 10%, var(--page-bg-2), var(--page-bg-1) 60%);
+    min-height: 100vh;
+    padding: 2.5rem 1.25rem;
+  }
+  main { max-width: 1040px; margin: 0 auto; }
+  h1 { font-size: 1.1rem; font-weight: 600; margin: 0 0 0.25rem; }
+  .sub { color: var(--text-secondary); margin: 0 0 1.75rem; font-size: 0.9rem; }
+
+  .cards { display: grid; grid-template-columns: 1fr; gap: 1.25rem; }
+  @media (min-width: 760px) { .cards { grid-template-columns: 1fr 1fr; } }
+
+  .card {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 1.5rem 1.5rem 1rem;
+    box-shadow: 0 1px 2px rgba(11, 11, 11, 0.06), 0 8px 24px rgba(11, 11, 11, 0.08);
+    border: 1px solid var(--border);
+  }
+  .card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .label { color: var(--text-secondary); font-size: 0.85rem; margin: 0 0 0.35rem; }
+  .pill {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.3rem 0.6rem;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .pill-good { background: var(--pill-good-bg); color: var(--pill-good-text); }
+  .pill-neutral { background: var(--pill-neutral-bg); color: var(--pill-neutral-text); }
+
+  .hero { font-size: 2.4rem; font-weight: 700; line-height: 1.1; margin: 0.15rem 0 0.3rem; }
+  .hero.indisponivel { font-size: 1.3rem; color: var(--text-secondary); font-weight: 600; }
+
+  .delta { font-size: 0.85rem; margin: 0 0 1.25rem; display: flex; align-items: center; gap: 0.3rem; }
+  .delta .valor { font-weight: 600; }
+  .delta.baixou .valor { color: var(--delta-good); }
+  .delta.subiu .valor { color: var(--text-secondary); }
+  .delta .contexto { color: var(--muted); }
+
+  svg.chart { width: 100%; height: 190px; display: block; overflow: visible; }
+  .gridline { stroke: var(--grid); stroke-width: 1; }
+  .axis-label { fill: var(--muted); font-size: 10px; font-family: inherit; }
+  .area-path { fill-opacity: 1; }
+  .line-path { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .crosshair { stroke: var(--baseline); stroke-width: 1; }
+  .hover-dot-ring { fill: var(--surface); }
+
+  .chart-wrap { position: relative; margin-top: 0.25rem; }
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--tooltip-bg);
+    color: var(--tooltip-text);
+    border-radius: 8px;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    transform: translate(-50%, -115%);
+    opacity: 0;
+    transition: opacity 0.08s ease;
+    z-index: 2;
+  }
+  .tooltip .tt-value { font-weight: 700; font-size: 0.88rem; }
+  .tooltip .tt-date { color: #c3c2b7; margin-top: 0.1rem; }
+
+  details.tabela { margin-top: 0.75rem; }
+  details.tabela summary {
+    cursor: pointer;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    user-select: none;
+  }
+  table.historico {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.5rem;
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+  }
+  table.historico th, table.historico td {
+    text-align: left;
+    padding: 0.3rem 0.4rem;
+    border-bottom: 1px solid var(--grid);
+    color: var(--text-secondary);
+  }
+
+  footer { margin-top: 1.5rem; color: var(--muted); font-size: 0.78rem; text-align: center; }
+</style>
 </head>
 <body>
+<main>
   <h1>BTS - 2026 World Tour Arirang</h1>
-  <p>Setor Arquibancada · Categoria Inteira · Alvo: <span id="alvo-label">R$ 2.800</span></p>
+  <p class="sub">Setor Arquibancada · Categoria Inteira · Alvo: R$ 2.800</p>
 
   <div class="cards" id="cards"></div>
 
-  <canvas id="grafico" height="110"></canvas>
-  <p id="status">carregando...</p>
+  <footer id="status">carregando...</footer>
+</main>
 
-  <script>
-    const PRECO_ALVO = 2800;
-    const DIAS = { dia30: "30/10", dia31: "31/10" };
-    const CORES = { dia30: "#1a7f37", dia31: "#9a3412" };
+<script>
+  const PRECO_ALVO = 2800;
+  const DIAS = {
+    dia30: { nome: "dia 30/10", corVar: "--series-dia30", washVar: "--series-dia30-wash" },
+    dia31: { nome: "dia 31/10", corVar: "--series-dia31", washVar: "--series-dia31-wash" },
+  };
 
-    function formatarPreco(v) {
-      if (v === null || v === undefined) return "sem anúncio";
-      return "R$ " + v.toFixed(2).replace(".", ",");
+  function formatarPreco(v) {
+    if (v === null || v === undefined) return null;
+    return "R$ " + v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function formatarData(iso, comHora) {
+    const d = new Date(iso);
+    const opts = comHora
+      ? { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }
+      : { day: "2-digit", month: "2-digit" };
+    return d.toLocaleString("pt-BR", opts);
+  }
+
+  function arredondarTicks(min, max) {
+    const span = Math.max(max - min, 1);
+    const passo = Math.pow(10, Math.floor(Math.log10(span / 4)));
+    const passoLimpo = [1, 2, 5, 10].map((m) => m * passo).find((p) => span / p <= 5) || passo * 10;
+    const ticks = [];
+    const inicio = Math.floor(min / passoLimpo) * passoLimpo;
+    for (let v = inicio; v <= max + passoLimpo * 0.5; v += passoLimpo) ticks.push(Math.round(v));
+    return ticks;
+  }
+
+  function buildCard(label, info, dia) {
+    const card = document.createElement("div");
+    card.className = "card";
+
+    const preco = dia.ultimo_preco ?? null;
+    const dentroDoAlvo = preco !== null && preco <= PRECO_ALVO;
+
+    const head = document.createElement("div");
+    head.className = "card-head";
+    const labelEl = document.createElement("p");
+    labelEl.className = "label";
+    labelEl.textContent = info.nome;
+    const pill = document.createElement("span");
+    pill.className = "pill " + (preco === null ? "pill-neutral" : dentroDoAlvo ? "pill-good" : "pill-neutral");
+    pill.textContent = preco === null ? "sem anúncio" : dentroDoAlvo ? "dentro do alvo" : "acima do alvo";
+    head.appendChild(labelEl);
+    head.appendChild(pill);
+    card.appendChild(head);
+
+    const hero = document.createElement("div");
+    hero.className = preco === null ? "hero indisponivel" : "hero";
+    hero.textContent = preco === null ? "sem anúncio disponível" : formatarPreco(preco);
+    card.appendChild(hero);
+
+    const historico = (dia.historico || []).filter((p) => p.preco !== null);
+    const delta = document.createElement("div");
+    delta.className = "delta";
+    if (historico.length >= 2) {
+      const atual = historico[historico.length - 1].preco;
+      const anterior = historico[historico.length - 2].preco;
+      const diff = atual - anterior;
+      const pct = (diff / anterior) * 100;
+      delta.classList.add(diff < 0 ? "baixou" : diff > 0 ? "subiu" : "");
+      const seta = diff < 0 ? "↓" : diff > 0 ? "↑" : "–";
+      const valorSpan = document.createElement("span");
+      valorSpan.className = "valor";
+      valorSpan.textContent = `${seta} ${formatarPreco(Math.abs(diff))} (${Math.abs(pct).toFixed(1)}%)`;
+      const contextoSpan = document.createElement("span");
+      contextoSpan.className = "contexto";
+      contextoSpan.textContent = "desde a última mudança";
+      delta.appendChild(valorSpan);
+      delta.appendChild(contextoSpan);
+    } else {
+      delta.innerHTML = '<span class="contexto">ainda sem histórico suficiente pra comparar</span>';
+    }
+    card.appendChild(delta);
+
+    const chartWrap = document.createElement("div");
+    chartWrap.className = "chart-wrap";
+    card.appendChild(chartWrap);
+
+    if (historico.length >= 1) {
+      renderChart(chartWrap, historico, info);
+    } else {
+      const vazio = document.createElement("p");
+      vazio.style.color = "var(--muted)";
+      vazio.style.fontSize = "0.8rem";
+      vazio.textContent = "aguardando pontos no histórico (aparece a partir da primeira mudança de preço)";
+      chartWrap.appendChild(vazio);
     }
 
-    function renderCards(state) {
+    if (historico.length >= 1) {
+      const det = document.createElement("details");
+      det.className = "tabela";
+      const sum = document.createElement("summary");
+      sum.textContent = "ver dados em tabela";
+      det.appendChild(sum);
+      const table = document.createElement("table");
+      table.className = "historico";
+      const thead = document.createElement("thead");
+      thead.innerHTML = "<tr><th>Data</th><th>Preço</th></tr>";
+      const tbody = document.createElement("tbody");
+      historico.slice().reverse().forEach((p) => {
+        const tr = document.createElement("tr");
+        const tdData = document.createElement("td");
+        tdData.textContent = formatarData(p.em, true);
+        const tdPreco = document.createElement("td");
+        tdPreco.textContent = formatarPreco(p.preco);
+        tr.appendChild(tdData);
+        tr.appendChild(tdPreco);
+        tbody.appendChild(tr);
+      });
+      table.appendChild(thead);
+      table.appendChild(tbody);
+      det.appendChild(table);
+      card.appendChild(det);
+    }
+
+    const meta = document.createElement("p");
+    meta.style.color = "var(--muted)";
+    meta.style.fontSize = "0.75rem";
+    meta.style.margin = "0.75rem 0 0";
+    meta.textContent = dia.ultima_consulta ? "última consulta: " + formatarData(dia.ultima_consulta, true) : "";
+    card.appendChild(meta);
+
+    return card;
+  }
+
+  function renderChart(container, historico, info) {
+    const W = 600, H = 190, padL = 56, padR = 10, padT = 10, padB = 24;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+
+    const valores = historico.map((p) => p.preco);
+    const min = Math.min(...valores), max = Math.max(...valores);
+    const ticks = arredondarTicks(min, max === min ? max + 1 : max);
+    const yMin = ticks[0], yMax = ticks[ticks.length - 1];
+
+    const x = (i) => padL + (historico.length === 1 ? plotW / 2 : (i / (historico.length - 1)) * plotW);
+    const y = (v) => padT + plotH - ((v - yMin) / (yMax - yMin || 1)) * plotH;
+
+    const seriesColor = getComputedStyle(document.documentElement).getPropertyValue(info.corVar).trim();
+    const washColor = getComputedStyle(document.documentElement).getPropertyValue(info.washVar).trim();
+
+    const svgns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgns, "svg");
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    svg.setAttribute("class", "chart");
+    svg.setAttribute("preserveAspectRatio", "none");
+
+    ticks.forEach((t) => {
+      const ty = y(t);
+      const line = document.createElementNS(svgns, "line");
+      line.setAttribute("x1", padL);
+      line.setAttribute("x2", W - padR);
+      line.setAttribute("y1", ty);
+      line.setAttribute("y2", ty);
+      line.setAttribute("class", "gridline");
+      svg.appendChild(line);
+
+      const label = document.createElementNS(svgns, "text");
+      label.setAttribute("x", padL - 8);
+      label.setAttribute("y", ty + 3);
+      label.setAttribute("text-anchor", "end");
+      label.setAttribute("class", "axis-label");
+      label.textContent = "R$ " + t.toLocaleString("pt-BR");
+      svg.appendChild(label);
+    });
+
+    // stepped path (step-after: preço vale até a próxima mudança)
+    const stepPts = [];
+    historico.forEach((p, i) => {
+      const px = x(i), py = y(p.preco);
+      if (i > 0) {
+        const prevY = y(historico[i - 1].preco);
+        stepPts.push([px, prevY]);
+      }
+      stepPts.push([px, py]);
+    });
+
+    const linePath = historico.length === 1
+      ? `M ${x(0) - 20} ${y(historico[0].preco)} L ${x(0) + 20} ${y(historico[0].preco)}`
+      : "M " + stepPts.map((p) => p.join(" ")).join(" L ");
+
+    const areaPath = historico.length === 1
+      ? ""
+      : linePath + ` L ${x(historico.length - 1)} ${padT + plotH} L ${x(0)} ${padT + plotH} Z`;
+
+    if (areaPath) {
+      const area = document.createElementNS(svgns, "path");
+      area.setAttribute("d", areaPath);
+      area.setAttribute("fill", washColor);
+      area.setAttribute("class", "area-path");
+      svg.appendChild(area);
+    }
+
+    const line = document.createElementNS(svgns, "path");
+    line.setAttribute("d", linePath);
+    line.setAttribute("stroke", seriesColor);
+    line.setAttribute("class", "line-path");
+    svg.appendChild(line);
+
+    // x labels: primeiro, meio, último
+    const idxLabels = historico.length === 1 ? [0] : [0, Math.floor((historico.length - 1) / 2), historico.length - 1];
+    [...new Set(idxLabels)].forEach((i) => {
+      const label = document.createElementNS(svgns, "text");
+      label.setAttribute("x", x(i));
+      label.setAttribute("y", H - 4);
+      label.setAttribute("text-anchor", i === 0 ? "start" : i === historico.length - 1 ? "end" : "middle");
+      label.setAttribute("class", "axis-label");
+      label.textContent = formatarData(historico[i].em, false);
+      svg.appendChild(label);
+    });
+
+    // crosshair + hover dot (ocultos por padrão)
+    const crosshair = document.createElementNS(svgns, "line");
+    crosshair.setAttribute("y1", padT);
+    crosshair.setAttribute("y2", padT + plotH);
+    crosshair.setAttribute("class", "crosshair");
+    crosshair.style.display = "none";
+    svg.appendChild(crosshair);
+
+    const dotRing = document.createElementNS(svgns, "circle");
+    dotRing.setAttribute("r", 6);
+    dotRing.setAttribute("class", "hover-dot-ring");
+    dotRing.style.display = "none";
+    svg.appendChild(dotRing);
+
+    const dot = document.createElementNS(svgns, "circle");
+    dot.setAttribute("r", 4);
+    dot.setAttribute("fill", seriesColor);
+    dot.style.display = "none";
+    svg.appendChild(dot);
+
+    const hitRect = document.createElementNS(svgns, "rect");
+    hitRect.setAttribute("x", padL);
+    hitRect.setAttribute("y", padT);
+    hitRect.setAttribute("width", plotW);
+    hitRect.setAttribute("height", plotH);
+    hitRect.setAttribute("fill", "transparent");
+    svg.appendChild(hitRect);
+
+    container.appendChild(svg);
+
+    const tooltip = document.createElement("div");
+    tooltip.className = "tooltip";
+    const ttValue = document.createElement("div");
+    ttValue.className = "tt-value";
+    const ttDate = document.createElement("div");
+    ttDate.className = "tt-date";
+    tooltip.appendChild(ttValue);
+    tooltip.appendChild(ttDate);
+    container.appendChild(tooltip);
+
+    function mostrar(i) {
+      const px = x(i), py = y(historico[i].preco);
+      crosshair.setAttribute("x1", px);
+      crosshair.setAttribute("x2", px);
+      crosshair.style.display = "";
+      dotRing.setAttribute("cx", px);
+      dotRing.setAttribute("cy", py);
+      dotRing.style.display = "";
+      dot.setAttribute("cx", px);
+      dot.setAttribute("cy", py);
+      dot.style.display = "";
+
+      ttValue.textContent = formatarPreco(historico[i].preco);
+      ttDate.textContent = formatarData(historico[i].em, true);
+      const pctX = (px / W) * 100;
+      const pctY = (py / H) * 100;
+      tooltip.style.left = pctX + "%";
+      tooltip.style.top = pctY + "%";
+      tooltip.style.opacity = "1";
+    }
+    function esconder() {
+      crosshair.style.display = "none";
+      dotRing.style.display = "none";
+      dot.style.display = "none";
+      tooltip.style.opacity = "0";
+    }
+
+    svg.addEventListener("pointermove", (ev) => {
+      const rect = svg.getBoundingClientRect();
+      const relX = ((ev.clientX - rect.left) / rect.width) * W;
+      let nearest = 0, best = Infinity;
+      historico.forEach((p, i) => {
+        const d = Math.abs(x(i) - relX);
+        if (d < best) { best = d; nearest = i; }
+      });
+      mostrar(nearest);
+    });
+    svg.addEventListener("pointerleave", esconder);
+  }
+
+  async function carregar() {
+    try {
+      const resp = await fetch("state.json?_=" + Date.now());
+      if (!resp.ok) throw new Error("state.json ainda não existe (o workflow ainda não rodou nenhuma vez?)");
+      const state = await resp.json();
       const cards = document.getElementById("cards");
       cards.innerHTML = "";
-      for (const [label, nome] of Object.entries(DIAS)) {
-        const dia = state[label] || {};
-        const preco = dia.ultimo_preco;
-        const dentroDoAlvo = preco !== null && preco !== undefined && preco <= PRECO_ALVO;
-        const classe = preco == null ? "indisponivel" : (dentroDoAlvo ? "preco alvo" : "preco acima");
-        const div = document.createElement("div");
-        div.className = "card";
-        div.innerHTML = `
-          <h2>${nome}</h2>
-          <div class="${classe}">${formatarPreco(preco)}</div>
-          <div class="meta">última consulta: ${dia.ultima_consulta ? new Date(dia.ultima_consulta).toLocaleString("pt-BR") : "-"}</div>
-        `;
-        cards.appendChild(div);
+      for (const [label, info] of Object.entries(DIAS)) {
+        cards.appendChild(buildCard(label, info, state[label] || {}));
       }
+      document.getElementById("status").textContent = "atualizado em " + new Date().toLocaleTimeString("pt-BR");
+    } catch (e) {
+      document.getElementById("status").textContent = "erro ao carregar: " + e.message;
     }
+  }
 
-    function renderGrafico(state) {
-      const datasets = [];
-      const labelsSet = new Set();
-
-      for (const label of Object.keys(DIAS)) {
-        const historico = (state[label] || {}).historico || [];
-        historico.forEach((p) => labelsSet.add(p.em));
-      }
-      const labels = Array.from(labelsSet).sort();
-
-      for (const [label, nome] of Object.entries(DIAS)) {
-        const historico = (state[label] || {}).historico || [];
-        const porData = {};
-        historico.forEach((p) => (porData[p.em] = p.preco));
-
-        let ultimoValor = null;
-        const dados = labels.map((em) => {
-          if (em in porData) ultimoValor = porData[em];
-          return ultimoValor;
-        });
-
-        datasets.push({
-          label: nome,
-          data: dados,
-          borderColor: CORES[label],
-          backgroundColor: CORES[label],
-          stepped: "before",
-          spanGaps: true,
-          tension: 0,
-        });
-      }
-
-      new Chart(document.getElementById("grafico"), {
-        type: "line",
-        data: {
-          labels: labels.map((l) => new Date(l).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })),
-          datasets,
-        },
-        options: {
-          responsive: true,
-          interaction: { mode: "nearest", intersect: false },
-          scales: {
-            y: {
-              title: { display: true, text: "Preço (R$)" },
-              suggestedMin: 0,
-            },
-            x: {
-              ticks: { maxTicksLimit: 10 },
-            },
-          },
-          plugins: {
-            annotation: undefined,
-          },
-        },
-      });
-    }
-
-    async function carregar() {
-      try {
-        const resp = await fetch("state.json?_=" + Date.now());
-        if (!resp.ok) throw new Error("state.json ainda não existe (o workflow ainda não rodou nenhuma vez?)");
-        const state = await resp.json();
-        renderCards(state);
-        renderGrafico(state);
-        document.getElementById("status").textContent =
-          "atualizado em " + new Date().toLocaleTimeString("pt-BR");
-      } catch (e) {
-        document.getElementById("status").textContent = "erro ao carregar: " + e.message;
-      }
-    }
-
-    carregar();
-    setInterval(carregar, 60000);
-  </script>
+  carregar();
+  setInterval(carregar, 60000);
+</script>
 </body>
 </html>

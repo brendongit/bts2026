@@ -1,4 +1,5 @@
 har/
+ref/
 .env
 telegram-client-id.md
 __pycache__/
