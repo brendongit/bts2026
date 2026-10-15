@@ -1,0 +1,5 @@
+har/
+.env
+telegram-client-id.md
+__pycache__/
+*.pyc
