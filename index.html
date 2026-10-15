@@ -163,9 +163,12 @@
     const span = Math.max(max - min, 1);
     const passo = Math.pow(10, Math.floor(Math.log10(span / 4)));
     const passoLimpo = [1, 2, 5, 10].map((m) => m * passo).find((p) => span / p <= 5) || passo * 10;
-    const ticks = [];
+    // garante que o primeiro/último tick cobrem min/max de verdade (senão a linha
+    // pode ultrapassar o topo/base do gráfico quando o preço não é um número "redondo")
     const inicio = Math.floor(min / passoLimpo) * passoLimpo;
-    for (let v = inicio; v <= max + passoLimpo * 0.5; v += passoLimpo) ticks.push(Math.round(v));
+    const fim = Math.ceil(max / passoLimpo) * passoLimpo;
+    const ticks = [];
+    for (let v = inicio; v <= fim + 1e-9; v += passoLimpo) ticks.push(Math.round(v));
     return ticks;
   }
 
@@ -349,11 +352,9 @@
     line.setAttribute("class", "line-path");
     svg.appendChild(line);
 
-    // marcador fixo no menor preço já visto (não depende de hover)
-    if (historico.length >= 2) {
-      const minIdx = historico.reduce((best, p, i) => (p.preco < historico[best].preco ? i : best), 0);
-      const minPreco = historico[minIdx].preco;
-      const mx = x(minIdx), my = y(minPreco);
+    // marcadores fixos (não dependem de hover): menor preço e preço atual
+    function desenharMarcador(idx, labelText, corBorda) {
+      const mx = x(idx), my = y(historico[idx].preco);
 
       const destaqueRing = document.createElementNS(svgns, "circle");
       destaqueRing.setAttribute("cx", mx);
@@ -367,11 +368,10 @@
       destaqueDot.setAttribute("cy", my);
       destaqueDot.setAttribute("r", 5);
       destaqueDot.setAttribute("fill", seriesColor);
-      destaqueDot.setAttribute("stroke", deltaGoodColor);
+      destaqueDot.setAttribute("stroke", corBorda);
       destaqueDot.setAttribute("stroke-width", "2");
       svg.appendChild(destaqueDot);
 
-      const labelText = "menor: " + formatarPreco(minPreco);
       const estimW = labelText.length * 5.6 + 14;
       const estimH = 18;
       let labelY = my - 10 - estimH;
@@ -387,7 +387,7 @@
       bg.setAttribute("height", estimH);
       bg.setAttribute("rx", 5);
       bg.setAttribute("fill", tooltipBgColor);
-      bg.setAttribute("stroke", deltaGoodColor);
+      bg.setAttribute("stroke", corBorda);
       bg.setAttribute("stroke-width", "1");
       svg.appendChild(bg);
 
@@ -400,6 +400,19 @@
       txt.setAttribute("fill", tooltipTextColor);
       txt.textContent = labelText;
       svg.appendChild(txt);
+    }
+
+    if (historico.length >= 2) {
+      const minIdx = historico.reduce((best, p, i) => (p.preco < historico[best].preco ? i : best), 0);
+      const atualIdx = historico.length - 1;
+      const minPreco = historico[minIdx].preco;
+
+      if (minIdx === atualIdx) {
+        desenharMarcador(atualIdx, "atual e menor: " + formatarPreco(minPreco), deltaGoodColor);
+      } else {
+        desenharMarcador(minIdx, "menor: " + formatarPreco(minPreco), deltaGoodColor);
+        desenharMarcador(atualIdx, "atual: " + formatarPreco(historico[atualIdx].preco), seriesColor);
+      }
     }
 
     // x labels: até 6 pontos espaçados (primeiro e último sempre entram)
