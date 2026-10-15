@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8" />
+<title>BTS Arirang - Widget</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #111110;
+    --surface: #1a1a19;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted: #898781;
+    --border: rgba(255, 255, 255, 0.08);
+    --good-bg: rgba(12, 163, 12, 0.18);
+    --good-text: #0ca30c;
+    --neutral-bg: rgba(255, 255, 255, 0.08);
+    --neutral-text: #c3c2b7;
+    --series-dia30: #199e70;
+    --series-dia31: #3987e5;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-user-select: none;
+    user-select: none;
+    overflow: hidden;
+  }
+  body { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+
+  .row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 10px;
+  }
+  .row .top { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .dot.dia30 { background: var(--series-dia30); }
+  .dot.dia31 { background: var(--series-dia31); }
+  .label { color: var(--text-secondary); font-size: 11px; }
+  .price { font-size: 19px; font-weight: 700; line-height: 1.25; white-space: nowrap; }
+
+  .pill {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 6px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .pill.good { background: var(--good-bg); color: var(--good-text); }
+  .pill.neutral { background: var(--neutral-bg); color: var(--neutral-text); }
+
+  footer {
+    margin-top: auto;
+    color: var(--muted);
+    font-size: 10px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+  <div id="rows"></div>
+  <footer id="status">carregando...</footer>
+
+<script>
+  const PRECO_ALVO = 2800;
+  const STATE_URL = "https://raw.githubusercontent.com/brendongit/bts2026/main/state.json";
+  const DIAS = { dia30: "30/10", dia31: "31/10" };
+
+  function formatarPreco(v) {
+    return "R$ " + v.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  }
+
+  function buildRow(label, nome, preco) {
+    const row = document.createElement("div");
+    row.className = "row";
+
+    const top = document.createElement("div");
+    top.className = "top";
+    const dot = document.createElement("div");
+    dot.className = "dot " + label;
+    const lab = document.createElement("div");
+    lab.className = "label";
+    lab.textContent = nome;
+    top.appendChild(dot);
+    top.appendChild(lab);
+    row.appendChild(top);
+
+    const price = document.createElement("div");
+    price.className = "price";
+    if (preco === null) {
+      price.style.fontSize = "14px";
+      price.style.color = "var(--muted)";
+      price.textContent = "sem anúncio";
+      row.appendChild(price);
+      return row;
+    }
+    price.textContent = formatarPreco(preco);
+    row.appendChild(price);
+
+    const pct = ((preco - PRECO_ALVO) / PRECO_ALVO) * 100;
+    const pill = document.createElement("div");
+    if (preco <= PRECO_ALVO) {
+      pill.className = "pill good";
+      pill.textContent = pct === 0 ? "✓ no alvo" : `↓ ${Math.abs(pct).toFixed(1)}% do alvo`;
+    } else {
+      pill.className = "pill neutral";
+      pill.textContent = `↑ ${pct.toFixed(1)}% acima do alvo`;
+    }
+    row.appendChild(pill);
+
+    return row;
+  }
+
+  async function carregar() {
+    try {
+      const resp = await fetch(STATE_URL + "?_=" + Date.now());
+      if (!resp.ok) throw new Error("sem dados ainda");
+      const state = await resp.json();
+      const rows = document.getElementById("rows");
+      rows.innerHTML = "";
+      let ultima = null;
+      for (const [label, nome] of Object.entries(DIAS)) {
+        const dia = state[label] || {};
+        rows.appendChild(buildRow(label, nome, dia.ultimo_preco ?? null));
+        if (dia.ultima_consulta && (!ultima || dia.ultima_consulta > ultima)) ultima = dia.ultima_consulta;
+      }
+      document.getElementById("status").textContent = ultima
+        ? "última consulta: " + new Date(ultima).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+        : "sem consulta ainda";
+    } catch (e) {
+      document.getElementById("status").textContent = "erro: " + e.message;
+    }
+  }
+
+  carregar();
+  setInterval(carregar, 60000);
+</script>
+</body>
+</html>

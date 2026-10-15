@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=BTS Arirang Widget
+Comment=Widget de preço do monitor BTS Arirang (dia 30 e 31/10)
+Exec=/home/adminlocal/Área de Trabalho/bts-snipper/widget/run-widget.sh
+X-GNOME-Autostart-enabled=true
+NoDisplay=false
+Terminal=false
