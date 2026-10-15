@@ -17,6 +17,11 @@ HEIGHT=210
 POS_X=${POS_X:-1640}
 POS_Y=${POS_Y:-800}
 
+if pgrep -f "user-data-dir=$PROFILE_DIR" > /dev/null; then
+  echo "Widget já está rodando (profile $PROFILE_DIR). Não abri outra janela."
+  exit 0
+fi
+
 mkdir -p "$PROFILE_DIR"
 
 google-chrome \
