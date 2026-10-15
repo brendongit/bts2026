@@ -454,9 +454,11 @@
     svg.addEventListener("pointerleave", esconder);
   }
 
+  const STATE_URL = "https://raw.githubusercontent.com/brendongit/bts2026/main/state.json";
+
   async function carregar() {
     try {
-      const resp = await fetch("state.json?_=" + Date.now());
+      const resp = await fetch(STATE_URL + "?_=" + Date.now());
       if (!resp.ok) throw new Error("state.json ainda não existe (o workflow ainda não rodou nenhuma vez?)");
       const state = await resp.json();
       const cards = document.getElementById("cards");
