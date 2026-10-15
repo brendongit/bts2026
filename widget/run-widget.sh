@@ -32,3 +32,17 @@ disown
 
 echo "Widget lançado (pid $!). Se não aparecer no canto certo, arraste a janela manualmente —"
 echo "a posição vai ficar salva pro Chrome usar da próxima vez (esse profile é só do widget)."
+
+# deixa a janela "sempre no topo" (precisa do wmctrl: sudo apt install wmctrl)
+if command -v wmctrl > /dev/null; then
+  for i in $(seq 1 20); do
+    if wmctrl -l | grep -q "BTS Arirang - Widget"; then
+      wmctrl -r "BTS Arirang - Widget" -b add,above
+      echo "Janela marcada como 'sempre no topo'."
+      break
+    fi
+    sleep 0.5
+  done
+else
+  echo "wmctrl não instalado — pulei o 'sempre no topo' (sudo apt install wmctrl pra habilitar)."
+fi
