@@ -43,6 +43,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           cp state.json /tmp/state.json
+          rm -f state.json
           git fetch origin data 2>/dev/null || true
           if git show-ref --verify --quiet refs/remotes/origin/data; then
             git checkout -B data origin/data
