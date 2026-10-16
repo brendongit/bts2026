@@ -1,9 +1,9 @@
 {
   "dia30": {
     "falhas_consecutivas": 0,
-    "ultima_consulta": "2026-10-16T10:50:22.958864-03:00",
+    "ultima_consulta": "2026-10-16T10:55:17.639301-03:00",
     "ultimo_preco": 3200,
-    "ultimo_listing_id": "ebe90dc2-380e-40bf-9608-3fc39ae0121b",
+    "ultimo_listing_id": "f448ce0a-f808-4acb-939e-bbb4dd7357e2",
     "notificados": {
       "451fffe0-0269-4286-a2d3-82062ba26468": 2667,
       "ed2fd7f4-6ccf-40b9-8702-7c52b6c54b11": 2800,
@@ -926,12 +926,16 @@
       {
         "em": "2026-10-16T10:50:22.958864-03:00",
         "preco": 3200
+      },
+      {
+        "em": "2026-10-16T10:55:17.639301-03:00",
+        "preco": 3200
       }
     ]
   },
   "dia31": {
     "falhas_consecutivas": 0,
-    "ultima_consulta": "2026-10-16T10:50:23.208636-03:00",
+    "ultima_consulta": "2026-10-16T10:55:17.923045-03:00",
     "ultimo_preco": 3000,
     "ultimo_listing_id": "1514d51e-cc44-482c-b5da-bd201ff12938",
     "historico": [
@@ -1849,6 +1853,10 @@
       },
       {
         "em": "2026-10-16T10:50:23.208636-03:00",
+        "preco": 3000
+      },
+      {
+        "em": "2026-10-16T10:55:17.923045-03:00",
         "preco": 3000
       }
     ]
