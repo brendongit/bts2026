@@ -24,6 +24,13 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      - name: Buscar state.json da branch data
+        run: |
+          git fetch origin data 2>/dev/null || true
+          if git show-ref --verify --quiet refs/remotes/origin/data; then
+            git show origin/data:state.json > state.json
+          fi
+
       - name: Rodar monitor
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
@@ -31,15 +38,26 @@ jobs:
           PRECO_ALVO: ${{ vars.PRECO_ALVO }}
         run: python monitor.py
 
-      - name: Persistir state.json
+      - name: Persistir state.json na branch data
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          cp state.json /tmp/state.json
+          git fetch origin data 2>/dev/null || true
+          if git show-ref --verify --quiet refs/remotes/origin/data; then
+            git checkout -B data origin/data
+          else
+            git checkout --orphan data
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+          cp /tmp/state.json state.json
+          git add state.json
           if [ -n "$(git status --porcelain state.json)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add state.json
             git commit -m "chore: atualiza state.json [skip ci]"
             for i in 1 2 3 4 5; do
-              git pull --rebase origin main && git push && break
+              git fetch origin data 2>/dev/null
+              git rebase origin/data 2>/dev/null || true
+              git push origin data && break
               echo "push rejeitado (tentativa $i), tentando de novo..."
               sleep $((RANDOM % 10 + 1))
             done

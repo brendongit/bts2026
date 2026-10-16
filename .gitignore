@@ -4,3 +4,4 @@ ref/
 telegram-client-id.md
 __pycache__/
 *.pyc
+state.json
