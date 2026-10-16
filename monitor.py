@@ -2,11 +2,13 @@
 import argparse
 import json
 import os
+import time
 from datetime import datetime, timezone, timedelta
 
 import requests
 
 API_BASE = "https://buyticketbrasil.com/api/backend/marketplaces"
+CHECKOUT_BASE = "https://buyticketbrasil.com/checkout"
 ARQUIBANCADA_TICKET_ID = "59b9544c-a947-46f6-a2db-14623a06d76c"
 CATEGORIA_ALVO = "Inteira"
 STATE_FILE = os.environ.get("STATE_FILE", "state.json")
@@ -20,12 +22,8 @@ BRT = timezone(timedelta(hours=-3))
 SESSOES = {
     "dia30": {
         "session_id": "ced30381-0cc4-4779-9c6b-ba05f44d086e",
-        "link": "https://buyticketbrasil.com/event/bts-2026worldtourarirang/session/ced30381-0cc4-4779-9c6b-ba05f44d086e",
     },
-    "dia31": {
-        "session_id": "7dbb3a2b-985d-4bf2-9d36-df893169e098",
-        "link": "https://buyticketbrasil.com/event/bts-2026worldtourarirang/session/7dbb3a2b-985d-4bf2-9d36-df893169e098",
-    },
+    # dia31 removido: já garantido ingresso do dia 30, falta só mais 1 para o mesmo dia
 }
 
 DATA_LIMITE = datetime(2026, 11, 1, tzinfo=BRT)  # para de alertar depois do show do dia 31
@@ -33,6 +31,8 @@ DATA_LIMITE = datetime(2026, 11, 1, tzinfo=BRT)  # para de alertar depois do sho
 PRECO_ALVO = float(os.environ.get("PRECO_ALVO") or "2800")
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+LOOP_DURATION_SECONDS = int(os.environ.get("LOOP_DURATION_SECONDS") or "240")
+CHECK_INTERVAL_SECONDS = int(os.environ.get("CHECK_INTERVAL_SECONDS") or "15")
 
 
 def carregar_state():
@@ -126,12 +126,13 @@ def processar_dia(label, info, state, dry_run):
     if preco_anterior is not None and preco >= preco_anterior:
         return  # já avisado nesse preço (ou preço subiu de novo), não repete
 
+    link_checkout = f"{CHECKOUT_BASE}?listing={listing_id}"
     msg = (
         "\U0001f3ab BTS Arirang - 2026 World Tour\n"
         f"Dia: {label}\n"
         "Setor: Arquibancada | Categoria: Inteira\n"
         f"Preço: R$ {preco:.2f}\n"
-        f"Link: {info['link']}"
+        f"Link (já no checkout): {link_checkout}"
     )
     enviar_telegram(msg, dry_run)
     notificados[listing_id] = preco
@@ -141,6 +142,7 @@ def main():
     parser = argparse.ArgumentParser(description="Monitor de preço BTS Arirang (Arquibancada/Inteira)")
     parser.add_argument("--dry-run", action="store_true", help="só mostra o que faria, não envia Telegram")
     parser.add_argument("--test-telegram", action="store_true", help="envia uma mensagem de teste e sai")
+    parser.add_argument("--once", action="store_true", help="roda só uma verificação e sai (ignora o loop)")
     args = parser.parse_args()
 
     if args.test_telegram:
@@ -152,11 +154,20 @@ def main():
         return
 
     state = carregar_state()
-    for label, info in SESSOES.items():
-        processar_dia(label, info, state, args.dry_run)
+    inicio = time.monotonic()
 
-    if not args.dry_run:
-        salvar_state(state)
+    while True:
+        for label, info in SESSOES.items():
+            processar_dia(label, info, state, args.dry_run)
+
+        if not args.dry_run:
+            salvar_state(state)
+
+        if args.once:
+            break
+        if time.monotonic() - inicio >= LOOP_DURATION_SECONDS:
+            break
+        time.sleep(CHECK_INTERVAL_SECONDS)
 
 
 if __name__ == "__main__":
