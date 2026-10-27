@@ -1,6 +1,6 @@
 {
   "dia30": {
-    "falhas_consecutivas": 1,
+    "falhas_consecutivas": 12,
     "ultima_consulta": "2026-10-27T07:36:51.921427-03:00",
     "ultimo_preco": 3000,
     "ultimo_listing_id": "25aa4961-03fa-48a2-abef-0c83a843a96e",
@@ -215318,7 +215318,8 @@
         "em": "2026-10-27T07:36:51.921427-03:00",
         "preco": 3000
       }
-    ]
+    ],
+    "falha_avisada": true
   },
   "dia31": {
     "falhas_consecutivas": 0,
